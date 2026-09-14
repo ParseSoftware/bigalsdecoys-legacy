@@ -8,7 +8,7 @@ import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { Image } from '~/components/image';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 
-import HeroImage from '../_images/Canada Lifestyle/instagram_DS2e6LSDWqb.jpg';
+import HeroImage from '../_images//Duck Lifestyle/instagram_CvucfnKOrOj.jpg';
 import { submitContactForm } from '../webpages/[id]/contact/_actions/submit-contact-form';
 
 import { getContactPageData } from '../contact/page-data';
@@ -132,7 +132,8 @@ export default async function ProStaffProgramPage({ params, searchParams }: Prop
         <div className="relative min-h-[500px] w-full" style={{ height: '70vh' }}>
           <Image
             alt="Waterfowl hunters setting a decoy spread in the field"
-            className="object-cover opacity-70"
+            className="scale-x-[-1] object-cover"
+            style={{ objectPosition: 'center right' }}
             fill
             placeholder="blur"
             preload
