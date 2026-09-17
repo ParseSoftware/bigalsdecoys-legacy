@@ -187,6 +187,13 @@ const ProductQuery = graphql(
           name
           description
           path
+          categories(first: 10) {
+            edges {
+              node {
+                path
+              }
+            }
+          }
           brand {
             name
           }

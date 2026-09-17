@@ -19,6 +19,8 @@ import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getProductPromotions } from '~/lib/promotions';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
+import { isByosCategory } from '~/lib/byos';
+import { redirect } from '~/i18n/navigation-server';
 
 import { addToCart } from './_actions/add-to-cart';
 import { getMoreProductImages } from './_actions/get-more-images';
@@ -108,6 +110,12 @@ export default async function Product({ params, searchParams }: Props) {
 
   if (!baseProduct) {
     return notFound();
+  }
+
+  if (
+    removeEdgesAndNodes(baseProduct.categories).some((category) => isByosCategory(category.path))
+  ) {
+    await redirect({ href: '/build-your-spread', locale });
   }
 
   const streamableProduct = Streamable.from(async () => {

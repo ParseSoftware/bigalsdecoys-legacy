@@ -16,12 +16,15 @@ import { pageInfoTransformer } from '~/data-transformers/page-info-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
+import { isByosCategory } from '~/lib/byos';
+import { pickPricesForTaxDisplay } from '~/lib/tax-pricing';
 
 import { MAX_COMPARE_LIMIT } from '../../../compare/page-data';
 import { getCompareProducts } from '../../fetch-compare-products';
 import { fetchFacetedSearch } from '../../fetch-faceted-search';
 
 import { CategoryViewed } from './_components/category-viewed';
+import { ByosBuilder } from './_components/byos-builder';
 import { getCategoryPageData } from './page-data';
 
 const getCachedCategory = cache((categoryId: number) => {
@@ -137,6 +140,7 @@ export default async function Category(props: Props) {
     settings?.storefront.catalog?.productComparisonsEnabled ?? false;
 
   const taxDisplay = settings?.tax?.plp;
+  const isByos = isByosCategory(category.path);
 
   const categoryDefaultSort =
     category.defaultProductSort && category.defaultProductSort !== 'DEFAULT'
@@ -185,6 +189,32 @@ export default async function Category(props: Props) {
       showBackorderMessage,
       taxDisplay,
     );
+  });
+
+  const streamableByosProducts = Streamable.from(async () => {
+    const format = await getFormatter();
+    const search = await streamableFacetedSearch;
+    const { defaultOutOfStockMessage, showOutOfStockMessage, showBackorderMessage } =
+      settings?.inventory ?? {};
+
+    return productCardTransformer(
+      search.products.items,
+      format,
+      showOutOfStockMessage ? defaultOutOfStockMessage : undefined,
+      showBackorderMessage,
+      taxDisplay,
+    ).map((product, index) => {
+      const rawProduct = search.products.items[index];
+      const prices = rawProduct ? pickPricesForTaxDisplay(rawProduct, taxDisplay) : undefined;
+
+      return {
+        ...product,
+        currencyCode: prices?.price.currencyCode,
+        purchasable: product.purchasable ?? false,
+        requiresOptions: product.requiresOptions ?? false,
+        unitPrice: prices?.price.value,
+      };
+    });
   });
 
   const streamableTotalCount = Streamable.from(async () => {
@@ -277,43 +307,49 @@ export default async function Category(props: Props) {
 
   return (
     <>
-      <ProductsListSection
-        breadcrumbs={breadcrumbs}
-        compareLabel={t('Compare.compare')}
-        compareProducts={streamableCompareProducts}
-        emptyStateSubtitle={t('Category.Empty.subtitle')}
-        emptyStateTitle={t('Category.Empty.title')}
-        filterLabel={t('FacetedSearch.filters')}
-        filters={streamableFilters}
-        filtersPanelTitle={t('FacetedSearch.filters')}
-        maxCompareLimitMessage={t('Compare.maxCompareLimit')}
-        maxItems={MAX_COMPARE_LIMIT}
-        paginationInfo={streamablePagination}
-        products={streamableProducts}
-        rangeFilterApplyLabel={t('FacetedSearch.Range.apply')}
-        removeLabel={t('Compare.remove')}
-        resetFiltersLabel={t('FacetedSearch.resetFilters')}
-        showCompare={productComparisonsEnabled}
-        showRating={showRating}
-        sortDefaultValue={category.defaultProductSort?.toLowerCase() ?? 'best_selling'}
-        sortLabel={t('SortBy.sortBy')}
-        sortOptions={[
-          { value: 'featured', label: t('SortBy.featuredItems') },
-          { value: 'newest', label: t('SortBy.newestItems') },
-          { value: 'best_selling', label: t('SortBy.bestSellingItems') },
-          { value: 'a_to_z', label: t('SortBy.aToZ') },
-          { value: 'z_to_a', label: t('SortBy.zToA') },
-          { value: 'best_reviewed', label: t('SortBy.byReview') },
-          { value: 'lowest_price', label: t('SortBy.priceAscending') },
-          { value: 'highest_price', label: t('SortBy.priceDescending') },
-          { value: 'relevance', label: t('SortBy.relevance') },
-        ]}
-        sortParamName="sort"
-        title={category.name}
-        description={category.description}
-        totalCount={streamableTotalCount}
-      />
-      <TrustBadges variant="inline" />
+      {isByos ? (
+        <Stream value={streamableByosProducts}>
+          {(products) => <ByosBuilder description={category.description} products={products} />}
+        </Stream>
+      ) : (
+        <ProductsListSection
+          breadcrumbs={breadcrumbs}
+          compareLabel={t('Compare.compare')}
+          compareProducts={streamableCompareProducts}
+          emptyStateSubtitle={t('Category.Empty.subtitle')}
+          emptyStateTitle={t('Category.Empty.title')}
+          filterLabel={t('FacetedSearch.filters')}
+          filters={streamableFilters}
+          filtersPanelTitle={t('FacetedSearch.filters')}
+          maxCompareLimitMessage={t('Compare.maxCompareLimit')}
+          maxItems={MAX_COMPARE_LIMIT}
+          paginationInfo={streamablePagination}
+          products={streamableProducts}
+          rangeFilterApplyLabel={t('FacetedSearch.Range.apply')}
+          removeLabel={t('Compare.remove')}
+          resetFiltersLabel={t('FacetedSearch.resetFilters')}
+          showCompare={productComparisonsEnabled}
+          showRating={showRating}
+          sortDefaultValue={category.defaultProductSort?.toLowerCase() ?? 'best_selling'}
+          sortLabel={t('SortBy.sortBy')}
+          sortOptions={[
+            { value: 'featured', label: t('SortBy.featuredItems') },
+            { value: 'newest', label: t('SortBy.newestItems') },
+            { value: 'best_selling', label: t('SortBy.bestSellingItems') },
+            { value: 'a_to_z', label: t('SortBy.aToZ') },
+            { value: 'z_to_a', label: t('SortBy.zToA') },
+            { value: 'best_reviewed', label: t('SortBy.byReview') },
+            { value: 'lowest_price', label: t('SortBy.priceAscending') },
+            { value: 'highest_price', label: t('SortBy.priceDescending') },
+            { value: 'relevance', label: t('SortBy.relevance') },
+          ]}
+          sortParamName="sort"
+          title={category.name}
+          description={category.description}
+          totalCount={streamableTotalCount}
+        />
+      )}
+      {!isByos ? <TrustBadges variant="inline" /> : null}
       <Stream value={streamableFacetedSearch}>
         {(search) => (
           <CategoryViewed
