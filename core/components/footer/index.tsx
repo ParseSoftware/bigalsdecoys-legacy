@@ -18,6 +18,7 @@ import { readFragment } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { CurrencyCode } from '~/components/header/fragment';
 import { logoTransformer } from '~/data-transformers/logo-transformer';
+import { isByosCategory, shouldShowByosNavigation } from '~/lib/byos';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 
 import { FooterFragment, FooterSectionsFragment } from './fragment';
@@ -97,11 +98,14 @@ export const Footer = async () => {
     const customerAccessToken = await getSessionCustomerAccessToken();
     const currencyCode = await getPreferredCurrencyCode();
     const sectionsData = await getFooterSections(customerAccessToken, currencyCode);
+    const categoryTree = shouldShowByosNavigation()
+      ? sectionsData.categoryTree
+      : sectionsData.categoryTree.filter((category) => !isByosCategory(category.path));
 
     return [
       {
         title: t('categories'),
-        links: sectionsData.categoryTree.map((category) => ({
+        links: categoryTree.map((category) => ({
           label: category.name,
           href: category.path,
         })),

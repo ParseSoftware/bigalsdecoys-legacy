@@ -11,6 +11,7 @@ import { revalidate } from '~/client/revalidate-target';
 import { TAGS } from '~/client/tags';
 import { logoTransformer } from '~/data-transformers/logo-transformer';
 import { getLocaleRouting } from '~/i18n/locale-config';
+import { isByosCategory, shouldShowByosNavigation } from '~/lib/byos';
 import { getCartId } from '~/lib/cart';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 
@@ -108,12 +109,25 @@ export const Header = async () => {
     // const customerAccessToken = await getSessionCustomerAccessToken();
     // const currencyCode = await getPreferredCurrencyCode();
     const categoryTree = (await getHeaderLinks(customerAccessToken, currencyCode)).categoryTree;
+    const filteredCategoryTree = shouldShowByosNavigation()
+      ? categoryTree
+      : categoryTree
+          .filter((category) => !isByosCategory(category.path))
+          .map((category) => ({
+            ...category,
+            children: category.children
+              .filter((child) => !isByosCategory(child.path))
+              .map((child) => ({
+                ...child,
+                children: child.children.filter((grandchild) => !isByosCategory(grandchild.path)),
+              })),
+          }));
 
     /**  To prevent the navigation menu from overflowing, we limit the number of categories to 5.
    To show a full list of categories, modify the `slice` method to remove the limit.
    Will require modification of navigation menu styles to accommodate the additional categories.
    */
-    const slicedTree = categoryTree.slice(0, 5);
+    const slicedTree = filteredCategoryTree.slice(0, 5);
 
     return [
       ...slicedTree.map(({ name, path, children }) => ({

@@ -35,7 +35,14 @@ const compareLoader = createCompareLoader();
 const createCategorySearchParamsLoader = cache(
   async (categoryId: number, customerAccessToken?: string) => {
     const cachedCategory = getCachedCategory(categoryId);
-    const categorySearch = await fetchFacetedSearch(cachedCategory, undefined, customerAccessToken);
+    const categorySearch = await fetchFacetedSearch(
+      cachedCategory,
+      undefined,
+      customerAccessToken,
+      {
+        allowByosCategory: true,
+      },
+    );
     const categoryFacets = categorySearch.facets.items.filter(
       (facet) => facet.__typename !== 'CategorySearchFilter',
     );
@@ -156,6 +163,7 @@ export default async function Category(props: Props) {
       },
       currencyCode,
       customerAccessToken,
+      { allowByosCategory: true },
     );
 
     return search;
@@ -201,7 +209,14 @@ export default async function Category(props: Props) {
     );
     const parsedSearchParams = loadSearchParams?.(searchParams) ?? {};
     const cachedCategory = getCachedCategory(categoryId);
-    const categorySearch = await fetchFacetedSearch(cachedCategory, undefined, customerAccessToken);
+    const categorySearch = await fetchFacetedSearch(
+      cachedCategory,
+      undefined,
+      customerAccessToken,
+      {
+        allowByosCategory: true,
+      },
+    );
     const refinedSearch = await streamableFacetedSearch;
 
     const allFacets = categorySearch.facets.items.filter(

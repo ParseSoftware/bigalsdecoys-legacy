@@ -7,6 +7,7 @@ import { PaginationFragment } from '~/client/fragments/pagination';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { CurrencyCode } from '~/components/header/fragment';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { getOrdinaryCategoryIds } from '~/lib/byos';
 
 const GetProductSearchResultsQuery = graphql(
   `
@@ -346,6 +347,10 @@ const AttributeKey = z.custom<`attr_${string}`>((val) => {
 type PublicSearchParamsWithAttributes = z.input<typeof PublicSearchParamsSchema> &
   Partial<Record<`attr_${string}`, string | string[] | null | undefined>>;
 
+interface FetchFacetedSearchOptions {
+  allowByosCategory?: boolean;
+}
+
 export const PublicToPrivateParams = PublicSearchParamsSchema.catchall(SearchParamToArray.nullish())
   .transform((publicParams) => {
     const { after, before, limit, sort, ...filters } = publicParams;
@@ -416,8 +421,29 @@ export const fetchFacetedSearch = cache(
     params: PublicSearchParamsWithAttributes,
     currencyCode?: CurrencyCode,
     customerAccessToken?: string,
+    options: FetchFacetedSearchOptions = {},
   ) => {
     const { after, before, limit = 24, sort, filters } = PublicToPrivateParams.parse(params);
+    const ordinaryCategoryIds = options.allowByosCategory
+      ? undefined
+      : await getOrdinaryCategoryIds(customerAccessToken);
+    let categoryEntityId = filters.categoryEntityId;
+    let categoryEntityIds = filters.categoryEntityIds;
+
+    if (ordinaryCategoryIds) {
+      const requestedCategoryIsOrdinary = ordinaryCategoryIds.includes(categoryEntityId ?? -1);
+
+      if (categoryEntityId != null && !requestedCategoryIsOrdinary) {
+        categoryEntityId = undefined;
+        categoryEntityIds = [];
+      } else if (categoryEntityIds) {
+        categoryEntityIds = categoryEntityIds.filter((categoryId) =>
+          ordinaryCategoryIds.includes(categoryId),
+        );
+      } else if (categoryEntityId == null) {
+        categoryEntityIds = ordinaryCategoryIds;
+      }
+    }
 
     return getProductSearchResults(
       {
@@ -425,7 +451,11 @@ export const fetchFacetedSearch = cache(
         before,
         limit,
         sort,
-        filters,
+        filters: {
+          ...filters,
+          categoryEntityId,
+          categoryEntityIds,
+        },
       },
       currencyCode,
       customerAccessToken,
