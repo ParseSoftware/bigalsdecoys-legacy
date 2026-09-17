@@ -133,12 +133,12 @@ export default async function ProStaffProgramPage({ params, searchParams }: Prop
           <Image
             alt="Waterfowl hunters setting a decoy spread in the field"
             className="scale-x-[-1] object-cover"
-            style={{ objectPosition: 'center right' }}
             fill
             placeholder="blur"
             preload
             sizes="100vw"
             src={HeroImage}
+            style={{ objectPosition: 'center right' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
